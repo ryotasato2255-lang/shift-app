@@ -49,7 +49,7 @@
 
     // メンバーリスト
     const STAFF_LIST = ['関口', '吉野', '佐藤', '船田', '河合', '梅田', '平川', '金本']; 
-    const HOUSES = ['浜田山', '武蔵野', 'どちらでも', '休み']; 
+    const HOUSES = ['浜田山', '武蔵野', 'どちらでも', '休み', '待機不可']; 
     const TIME_SLOTS = ['09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'];
     const HOLIDAYS_2026 = ['2026-04-29', '2026-05-03', '2026-05-04', '2026-05-05', '2026-05-06', '2026-07-20', '2026-08-11', '2026-09-21', '2026-09-22', '2026-09-23', '2026-10-12', '2026-11-03', '2026-11-23'];
 
@@ -184,13 +184,15 @@
           const musashinoList = getList('武蔵野');
           const eitherList = getList('どちらでも');
           const holidayList = getList('休み');
+          const unavailableList = getList('待機不可');
           const uninputted = STAFF_LIST.filter(n => !Object.keys(dayData).includes(n));
 
           textToCopy += `【${dateObj.label} 待機希望】\n`;
           textToCopy += `■ 浜田山\n${hamadayamaList.length > 0 ? hamadayamaList.join('\n') : 'なし'}\n\n`;
           textToCopy += `■ 武蔵野\n${musashinoList.length > 0 ? musashinoList.join('\n') : 'なし'}\n\n`;
           textToCopy += `■ どちらでも\n${eitherList.length > 0 ? eitherList.join('\n') : 'なし'}\n\n`;
-          textToCopy += `■ 休み\n${holidayList.length > 0 ? holidayList.join('\n') : 'なし'}\n\n`; 
+          textToCopy += `■ 休み\n${holidayList.length > 0 ? holidayList.join('\n') : 'なし'}\n\n`;
+          textToCopy += `■ 待機不可\n${unavailableList.length > 0 ? unavailableList.join('\n') : 'なし'}\n\n`; 
           textToCopy += `未入力: ${uninputted.length > 0 ? uninputted.join('、') : '全員入力済'}\n\n`;
           textToCopy += `------------------------\n\n`;
         });
@@ -343,6 +345,7 @@
                       {renderHouseSection('武蔵野', dayData, dateObj.value, 'border-teal-500', 'text-teal-300')}
                       {renderHouseSection('どちらでも', dayData, dateObj.value, 'border-amber-500', 'text-amber-300')}
                       {renderHouseSection('休み', dayData, dateObj.value, 'border-rose-500', 'text-rose-300')}
+                      {renderHouseSection('待機不可', dayData, dateObj.value, 'border-gray-500', 'text-gray-300')}
 
                       <div className="text-xs text-slate-400 pt-3 mt-2 text-center">
                         未入力: {uninputted.length > 0 ? uninputted.join('、') : '✨ 全員入力済！'}
