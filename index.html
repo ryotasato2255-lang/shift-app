@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>週末待機希望シフト</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+</head>
+<body class="bg-slate-50">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // ★★★ 新しい接続情報に差し替え済み ★★★
+    const firebaseConfig = { 
+      apiKey: "AIzaSyBZbEpUcsrJkxaNLCDc0doGXQztozNp4pI",
+      authDomain: "model-house-2026hamamusa.firebaseapp.com",
+      databaseURL: "https://model-house-2026hamamusa-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "model-house-2026hamamusa",
+      storageBucket: "model-house-2026hamamusa.firebasestorage.app",
+      messagingSenderId: "374678392478",
+      appId: "1:374678392478:web:56704e5a6220ac6369758f"
+    }; 
+
+    if (!firebase.apps.length) {
+      firebase.initializeApp(firebaseConfig);
+    }
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    // アイコン部品
+    const CalendarIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>;
+    const UserIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+    const HomeIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>;
+    const CheckCircleIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>;
+    const CopyIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>;
+    const ClockIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>;
+    const MessageSquareIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
+    const XCircleIcon = ({ className }) => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><circle cx="12" cy="12" r="10"/><line x1="15" x2="9" y1="9" y2="15"/><line x1="9" x2="15" y1="9" y2="15"/></svg>;
+
+    // メンバーリスト
+    const STAFF_LIST = ['関口', '吉野', '佐藤', '船田', '河合', '梅田', '平川', '金本']; 
+    const HOUSES = ['浜田山', '武蔵野', 'どちらでも', '休み']; 
+    const TIME_SLOTS = ['09:30', '10:00', '10:30', '11:00', '11:30', '12:00', '12:30', '13:00', '13:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'];
+    const HOLIDAYS_2026 = ['2026-04-29', '2026-05-03', '2026-05-04', '2026-05-05', '2026-05-06', '2026-07-20', '2026-08-11', '2026-09-21', '2026-09-22', '2026-09-23', '2026-10-12', '2026-11-03', '2026-11-23'];
+
+    const formatDateForDisplay = (dateObj) => {
+      const days = ['日', '月', '火', '水', '木', '金', '土'];
+      return `${dateObj.getMonth() + 1}/${dateObj.getDate()}(${days[dateObj.getDay()]})`;
+    };
+
+    const generateWeekendAndHolidays = () => {
+      const dates = [];
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); 
+      for (let i = 0; i < 90; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6; 
+        const dateString = d.toISOString().split('T')[0]; 
+        const isHoliday = HOLIDAYS_2026.includes(dateString); 
+        if (isWeekend || isHoliday) { 
+          dates.push({ value: dateString, label: formatDateForDisplay(d) }); 
+        }
+      }
+      return dates;
+    };
+
+    function App() {
+      const [user, setUser] = useState(null); 
+      const [availableDates, setAvailableDates] = useState([]); 
+      const [selectedDate, setSelectedDate] = useState(''); 
+      const [selectedStaff, setSelectedStaff] = useState(''); 
+      const [selectedHouse, setSelectedHouse] = useState(''); 
+      const [startTime, setStartTime] = useState('09:30'); 
+      const [endTime, setEndTime] = useState('18:00'); 
+      const [selectedNote, setSelectedNote] = useState(''); 
+      const [allShiftsData, setAllShiftsData] = useState({}); 
+      const [isSaving, setIsSaving] = useState(false); 
+      const [message, setMessage] = useState(''); 
+
+      useEffect(() => {
+        const dates = generateWeekendAndHolidays(); 
+        setAvailableDates(dates); 
+        if (dates.length > 0) setSelectedDate(dates[0].value); 
+
+        auth.signInAnonymously().catch(err => {
+          console.error("ログインエラー:", err);
+          setMessage('通信環境を確認してください。');
+        });
+        
+        const unsubscribe = auth.onAuthStateChanged(setUser); 
+        return () => unsubscribe(); 
+      }, []);
+
+      useEffect(() => {
+        if (!user) return; 
+        const shiftsRef = db.ref('shifts');
+        shiftsRef.on('value', (snapshot) => {
+          setAllShiftsData(snapshot.val() || {}); 
+        });
+        return () => shiftsRef.off(); 
+      }, [user]);
+
+      const alertMessage = (msg) => {
+        setMessage(msg);
+        setTimeout(() => setMessage(''), 3000); 
+      };
+
+      const handleSave = async () => {
+        if (!user) { alertMessage('接続中です。数秒お待ちください。'); return; }
+        if (!selectedStaff || !selectedHouse) { alertMessage('担当者と展示場は必ず選んでください。'); return; }
+        setIsSaving(true); 
+        try {
+          const shiftRef = db.ref(`shifts/${selectedDate}`); 
+          const dataToSave = {
+            house: selectedHouse,
+            time: `${startTime}〜${endTime}`, 
+            note: selectedNote
+          };
+          await shiftRef.update({ [selectedStaff]: dataToSave });
+          
+          alertMessage('保存しました！'); 
+          setSelectedStaff(''); setSelectedHouse('');
+          setStartTime('09:30'); setEndTime('18:00'); setSelectedNote(''); 
+        } catch (error) {
+          alertMessage(`保存失敗: エラーが発生しました`); 
+        } finally {
+          setIsSaving(false); 
+        }
+      };
+
+      const handleDelete = async (targetDateValue, staffName) => {
+        if (!user) return;
+        if (!window.confirm(`${staffName}さんの予定を削除しますか？`)) return;
+        setIsSaving(true);
+        try {
+          const shiftRef = db.ref(`shifts/${targetDateValue}`);
+          await shiftRef.update({ [staffName]: null });
+          alertMessage(`${staffName}さんの予定を削除しました。`);
+        } catch (error) {
+          alertMessage(`削除に失敗しました`);
+        } finally {
+          setIsSaving(false);
+        }
+      };
+
+      const handleResetDay = async () => {
+        if (!user) return;
+        const targetLabel = availableDates.find(d => d.value === selectedDate)?.label || selectedDate;
+        if (!window.confirm(`【警告】${targetLabel} の予定を全員分「白紙」に戻しますか？`)) return;
+        setIsSaving(true);
+        try {
+          const shiftRef = db.ref(`shifts/${selectedDate}`);
+          await shiftRef.remove(); 
+          alertMessage(`${targetLabel}の予定をすべてリセットしました。`);
+        } catch (error) {
+          alertMessage(`リセットに失敗しました`);
+        } finally {
+          setIsSaving(false);
+        }
+      };
+
+      const displayDates = availableDates.slice(0, 3);
+
+      const handleExportText = () => {
+        let textToCopy = ""; 
+        displayDates.forEach(dateObj => { 
+          const dayData = allShiftsData[dateObj.value] || {}; 
+          const getList = (targetHouse) => Object.keys(dayData)
+            .filter(n => (dayData[n]?.house || dayData[n]) === targetHouse)
+            .map(n => `・${n} ${dayData[n].time || '09:30〜18:00'} ${dayData[n].note ? `（${dayData[n].note}）` : ''}`);
+
+          const hamadayamaList = getList('浜田山');
+          const musashinoList = getList('武蔵野');
+          const eitherList = getList('どちらでも');
+          const holidayList = getList('休み');
+          const uninputted = STAFF_LIST.filter(n => !Object.keys(dayData).includes(n));
+
+          textToCopy += `【${dateObj.label} 待機希望】\n`;
+          textToCopy += `■ 浜田山\n${hamadayamaList.length > 0 ? hamadayamaList.join('\n') : 'なし'}\n\n`;
+          textToCopy += `■ 武蔵野\n${musashinoList.length > 0 ? musashinoList.join('\n') : 'なし'}\n\n`;
+          textToCopy += `■ どちらでも\n${eitherList.length > 0 ? eitherList.join('\n') : 'なし'}\n\n`;
+          textToCopy += `■ 休み\n${holidayList.length > 0 ? holidayList.join('\n') : 'なし'}\n\n`; 
+          textToCopy += `未入力: ${uninputted.length > 0 ? uninputted.join('、') : '全員入力済'}\n\n`;
+          textToCopy += `------------------------\n\n`;
+        });
+        
+        navigator.clipboard.writeText(textToCopy).then(() => alertMessage('直近3日分をコピーしました！')).catch(() => {
+            const textArea = document.createElement("textarea");
+            textArea.value = textToCopy;
+            document.body.appendChild(textArea);
+            textArea.focus(); textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+            alertMessage('直近3日分をコピーしました！');
+        });
+      };
+
+      const renderHouseSection = (houseName, dayData, dateValue, borderColorClass, textColorClass) => {
+        const members = Object.keys(dayData).filter(n => (dayData[n]?.house || dayData[n]) === houseName);
+        if (members.length === 0) return null; 
+        return (
+          <div className={`rounded-xl p-4 border-l-4 mb-4 bg-slate-800/60 ${borderColorClass}`}>
+            <div className={`text-xs font-black uppercase tracking-widest mb-3 ${textColorClass}`}>{houseName}</div>
+            <div className="space-y-2">
+              {members.map(name => {
+                const data = dayData[name];
+                const time = data?.time || '09:30〜18:00';
+                const note = data?.note || '';
+                return (
+                  <div key={name} className="flex justify-between items-center text-sm border-b border-slate-600/50 pb-2 last:border-0 last:pb-0">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-100">{name}</span>
+                        <span className="text-xs text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-700">{time}</span>
+                      </div>
+                      {note && <div className="text-xs text-rose-300 mt-1 pl-1">※{note}</div>}
+                    </div>
+                    <button onClick={() => handleDelete(dateValue, name)} className="text-slate-500 hover:text-rose-400 transition-colors p-1" title="削除する">
+                      <XCircleIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      };
+
+      return (
+        <div className="min-h-screen bg-slate-50 p-4 font-sans text-slate-800 flex items-start justify-center">
+          <div className="w-full max-w-md bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200">
+            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-6 text-white text-center">
+              <div className="flex justify-center mb-2"><CalendarIcon className="w-8 h-8 opacity-80" /></div>
+              <h1 className="text-2xl font-extrabold tracking-tight">週末待機希望</h1>
+              <p className="text-xs text-blue-100 mt-2 font-medium">※毎週木曜までに入力</p>
+            </div>
+
+            {message && (
+              <div className="bg-emerald-50 text-emerald-700 p-4 text-sm text-center font-bold flex items-center justify-center gap-2 border-b border-emerald-100">
+                <CheckCircleIcon className="w-4 h-4" /> {message}
+              </div>
+            )}
+
+            <div className="p-6 space-y-6">
+              <section>
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-600 mb-2">
+                  <CalendarIcon className="w-4 h-4 text-blue-500" /> 1. 日付を選ぶ
+                </label>
+                <select value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="w-full bg-slate-50 border-2 border-slate-200 rounded-xl p-3 font-bold text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none">
+                  {availableDates.map(date => <option key={date.value} value={date.value}>{date.label}</option>)}
+                </select>
+              </section>
+
+              <section>
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-600 mb-2">
+                  <UserIcon className="w-4 h-4 text-blue-500" /> 2. 自分の名前を選ぶ
+                </label>
+                <div className="grid grid-cols-4 gap-2">
+                  {STAFF_LIST.map(staff => (
+                    <button key={staff} onClick={() => setSelectedStaff(staff)} className={`py-2 rounded-lg text-sm font-bold transition-all ${selectedStaff === staff ? 'bg-blue-600 text-white shadow-md scale-105' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{staff}</button>
+                  ))}
+                </div>
+              </section>
+              
+              <section>
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-600 mb-2">
+                  <HomeIcon className="w-4 h-4 text-blue-500" /> 3. 展示場・状況を選ぶ
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  {HOUSES.map(house => (
+                    <button key={house} onClick={() => setSelectedHouse(house)} className={`py-3 rounded-xl font-bold text-sm transition-all border-2 ${selectedHouse === house ? 'bg-blue-600 border-blue-600 text-white shadow-md scale-105' : 'bg-white border-slate-200 text-slate-500 hover:border-blue-300'}`}>{house}</button>
+                  ))}
+                </div>
+              </section>
+
+              <section>
+                <label className="flex items-center justify-between text-sm font-bold text-slate-600 mb-2">
+                  <div className="flex items-center gap-2"><ClockIcon className="w-4 h-4 text-blue-500" /> 4. 待機できる時間</div>
+                </label>
+                <div className="flex items-center gap-2">
+                  <select value={startTime} onChange={(e) => setStartTime(e.target.value)} className="flex-1 bg-white border-2 border-slate-200 rounded-xl p-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none">
+                    {TIME_SLOTS.map(t => <option key={`start-${t}`} value={t}>{t}</option>)}
+                  </select>
+                  <span className="font-bold text-slate-400">〜</span>
+                  <select value={endTime} onChange={(e) => setEndTime(e.target.value)} className="flex-1 bg-white border-2 border-slate-200 rounded-xl p-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none">
+                    {TIME_SLOTS.map(t => <option key={`end-${t}`} value={t}>{t}</option>)}
+                  </select>
+                </div>
+              </section>
+
+              <section>
+                <label className="flex items-center justify-between text-sm font-bold text-slate-600 mb-2">
+                  <div className="flex items-center gap-2"><MessageSquareIcon className="w-4 h-4 text-blue-500" /> 5. 備考・打ち合わせ等</div>
+                  <span className="text-xs bg-slate-100 text-slate-400 px-2 py-0.5 rounded">任意</span>
+                </label>
+                <input type="text" value={selectedNote} onChange={(e) => setSelectedNote(e.target.value)} placeholder="例: 13:00-14:30 〇〇様と打合せ" className="w-full bg-white border-2 border-slate-200 rounded-xl p-3 text-sm text-slate-700 focus:ring-2 focus:ring-blue-100 outline-none" />
+              </section>
+
+              <button onClick={handleSave} disabled={isSaving} className={`w-full py-4 rounded-xl font-bold text-lg text-white shadow-lg transition-all active:scale-95 flex justify-center items-center gap-2 ${isSaving ? 'bg-slate-400' : 'bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700'}`}>
+                {isSaving ? '保存中...' : '希望を保存する'}
+              </button>
+              
+              <div className="text-right pt-2">
+                <button onClick={handleResetDay} disabled={isSaving} className="text-xs text-slate-400 hover:text-rose-500 underline transition-colors">
+                  ※この日の予定をすべてリセット
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-slate-800 p-6 text-white border-t border-slate-700">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-sm font-bold flex items-center gap-2">
+                  <CheckCircleIcon className="w-4 h-4 text-emerald-400" /> 直近3日間の状況（固定）
+                </h2>
+                <button onClick={handleExportText} className="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-2 rounded-lg flex items-center gap-1 border border-slate-600 transition-colors shadow-sm">
+                  <CopyIcon className="w-3 h-3" /> テキストでコピー
+                </button>
+              </div>
+              
+              <div className="space-y-6">
+                {displayDates.map(dateObj => {
+                  const dayData = allShiftsData[dateObj.value] || {};
+                  const uninputted = STAFF_LIST.filter(name => !Object.keys(dayData).includes(name));
+
+                  return (
+                    <div key={dateObj.value} className="bg-slate-900 rounded-xl p-4 border border-slate-700 shadow-inner">
+                      <h3 className="text-base font-bold text-white mb-4 border-b border-slate-700 pb-2 flex items-center gap-2">
+                        <CalendarIcon className="w-4 h-4 text-blue-400"/> {dateObj.label}
+                      </h3>
+                      
+                      {renderHouseSection('浜田山', dayData, dateObj.value, 'border-blue-500', 'text-blue-300')}
+                      {renderHouseSection('武蔵野', dayData, dateObj.value, 'border-teal-500', 'text-teal-300')}
+                      {renderHouseSection('どちらでも', dayData, dateObj.value, 'border-amber-500', 'text-amber-300')}
+                      {renderHouseSection('休み', dayData, dateObj.value, 'border-rose-500', 'text-rose-300')}
+
+                      <div className="text-xs text-slate-400 pt-3 mt-2 text-center">
+                        未入力: {uninputted.length > 0 ? uninputted.join('、') : '✨ 全員入力済！'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
